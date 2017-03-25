@@ -104,8 +104,8 @@ clear_prefix_maps (struct prefix_maps *maps)
 
 /* Private function, assumes new_name is wide enough to hold the remapped name. */
 const char *
-_apply_prefix_map (const char *old_name, char *new_name,
-		   struct prefix_map *map_head)
+remap_prefix_to (const char *old_name, char *new_name,
+		 struct prefix_map *map_head)
 {
   struct prefix_map *map;
   const char *name;
@@ -123,6 +123,12 @@ _apply_prefix_map (const char *old_name, char *new_name,
 }
 
 
+#define remap_prefix_alloca(filename, maps) \
+  remap_prefix_to ((filename), \
+		   (char *) alloca (strlen ((filename)) + (maps)->max_replace + 1), \
+		   (maps)->head)
+
+
 /* Remap a filename.
  *
  * This function does not consume nor take ownership of filename; the caller is
@@ -136,15 +142,13 @@ _apply_prefix_map (const char *old_name, char *new_name,
 const char *
 remap_prefix_alloc (const char *filename, struct prefix_maps *maps, void *(*alloc)(size_t size))
 {
-  size_t maxlen = strlen (filename) + maps->max_replace + 1;
-  char *newname = (char *) alloca (maxlen);
-  const char *name = _apply_prefix_map (filename, newname, maps->head);
+  const char *name = remap_prefix_alloca (filename, maps);
 
   if (name == filename)
     return filename;
 
-  size_t len = strlen (newname) + 1;
-  return (char *) memcpy (alloc (len), newname, len);
+  size_t len = strlen (name) + 1;
+  return (char *) memcpy (alloc (len), name, len);
 }
 
 

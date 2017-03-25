@@ -57,8 +57,8 @@ parse_prefix_maps (const char *arg, struct prefix_maps *maps)
   char *copy = (char *) alloca (len + 1);
   memcpy (copy, arg, len + 1); // strtok modifies the string so we have to copy it
 
-  char *sep = ":", *end;
-  char *tok = strtok_r (copy, sep, &end);
+  const char *sep = ":";
+  char *end, *tok = strtok_r (copy, sep, &end);
   while (tok != NULL)
     {
       if (!parse_prefix_map (tok, maps))
