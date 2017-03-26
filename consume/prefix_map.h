@@ -20,6 +20,21 @@ xstrdup (const char *s)
   return (char *) memcpy (ret, s, len);
 }
 
+/* Some path parsing primitives, basically also copied from GCC. */
+
+#if defined(__MSDOS__) || defined(_WIN32) || defined(__OS2__) || defined (__CYGWIN__)
+#  define IS_DIR_SEPARATOR(c) IS_DOS_DIR_SEPARATOR (c)
+#else /* not DOSish */
+#  define IS_DIR_SEPARATOR(c) IS_UNIX_DIR_SEPARATOR (c)
+#endif
+
+#define IS_DIR_SEPARATOR_1(dos_based, c)				\
+  (((c) == '/')								\
+   || (((c) == '\\') && (dos_based)))
+
+#define IS_DOS_DIR_SEPARATOR(c) IS_DIR_SEPARATOR_1 (1, c)
+#define IS_UNIX_DIR_SEPARATOR(c) IS_DIR_SEPARATOR_1 (0, c)
+
 /** Applying the variable */
 
 struct prefix_map
@@ -109,14 +124,23 @@ remap_prefix_to (const char *old_name, char *new_name,
 {
   struct prefix_map *map;
   const char *name;
+  int len;
 
   for (map = map_head; map; map = map->next)
-    if (strncmp (old_name, map->old_prefix, map->old_len) == 0)
-      break;
+    {
+      len = map->old_len;
+      /* Ignore trailing path separators at the end of old_prefix */
+      while (len > 0 && IS_DIR_SEPARATOR (map->old_prefix[len-1])) len--;
+      /* Check if old_name matches old_prefix at a path component boundary */
+      if (! strncmp (old_name, map->old_prefix, len)
+	  && (IS_DIR_SEPARATOR (old_name[len])
+	      || old_name[len] == '\0'))
+	break;
+    }
   if (!map)
     return old_name;
 
-  name = old_name + map->old_len;
+  name = old_name + len;
   memcpy (new_name, map->new_prefix, map->new_len);
   memcpy (new_name + map->new_len, name, strlen (name) + 1);
   return new_name;
