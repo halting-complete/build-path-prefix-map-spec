@@ -126,19 +126,12 @@ clear_prefix_maps (struct prefix_maps *maps)
 }
 
 
-/* Remap a filename.
-
-   Returns OLD_NAME unchanged if there was no remapping, otherwise NEW_NAME.
-
-   No allocations are performed; it assumes that NEW_NAME has enough space for
-   any potential remapped value.  */
-const char *
-remap_prefix_to (const char *old_name, char *new_name,
-		 struct prefix_map *map_head)
+struct prefix_map *
+find_matching_map (const char *old_name, struct prefix_map *map_head,
+		   const char **suffix, size_t *new_len)
 {
   struct prefix_map *map;
-  const char *name;
-  int len;
+  size_t len;
 
   for (map = map_head; map; map = map->next)
     {
@@ -149,16 +142,33 @@ remap_prefix_to (const char *old_name, char *new_name,
       if (! strncmp (old_name, map->old_prefix, len)
 	  && (IS_DIR_SEPARATOR (old_name[len])
 	      || old_name[len] == '\0'))
-	break;
+	{
+	  *suffix = old_name + len;
+	  *new_len = map->new_len + strlen (*suffix) + 1;
+	  break;
+	}
     }
-  if (!map)
-    return old_name;
 
-  name = old_name + len;
-  memcpy (new_name, map->new_prefix, map->new_len);
-  memcpy (new_name + map->new_len, name, strlen (name) + 1);
-  return new_name;
+  return map;
 }
+
+const char *
+apply_matching_map (const char *suffix, struct prefix_map *map, char *name)
+{
+  memcpy (name, map->new_prefix, map->new_len);
+  memcpy (name + map->new_len, suffix, strlen (suffix) + 1);
+  return name;
+}
+
+#define remap_prefix_alloc_(old_name, maps, alloc) \
+  ({ \
+    const char *suffix; \
+    size_t len; \
+    struct prefix_map *map = find_matching_map ((old_name), (maps)->head, \
+						&suffix, &len); \
+    map ? apply_matching_map (suffix, map, (char *) alloc (len)) \
+        : (char *) (old_name); \
+  })
 
 
 /* Remap a filename.
@@ -166,10 +176,7 @@ remap_prefix_to (const char *old_name, char *new_name,
    Returns OLD_NAME unchanged if there was no remapping, otherwise returns a
    stack-allocated pointer to the newly-remapped filename.  */
 #define remap_prefix_alloca(old_name, maps) \
-  remap_prefix_to ((old_name), \
-		   (char *) alloca (strlen ((old_name)) + \
-				    (maps)->max_replace + 1), \
-		   (maps)->head)
+  remap_prefix_alloc_ ((old_name), (maps), alloca)
 
 
 /* Remap a filename.
@@ -185,13 +192,7 @@ remap_prefix_alloc (const char *old_name,
 		    struct prefix_maps *maps,
 		    void *(*alloc)(size_t size))
 {
-  const char *name = remap_prefix_alloca (old_name, maps);
-
-  if (name == old_name)
-    return old_name;
-
-  size_t len = strlen (name) + 1;
-  return (char *) memcpy (alloc (len), name, len);
+  return remap_prefix_alloc_ (old_name, maps, alloc);
 }
 
 
