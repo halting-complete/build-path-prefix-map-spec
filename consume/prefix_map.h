@@ -53,13 +53,12 @@ struct prefix_maps
 };
 
 /* Add a new mapping.
- *
- * The input strings are duplicated and a new prefix_map struct is allocated.
- * Ownership of the duplicates, as well as the new prefix_map, is the same as
- * the owner of the overall prefix_maps struct.
- *
- * Returns 0 on failure and 1 on success.
- */
+
+   The input strings are duplicated and a new prefix_map struct is allocated.
+   Ownership of the duplicates, as well as the new prefix_map, is the same as
+   the owner of the overall prefix_maps struct.
+
+   Returns 0 on failure and 1 on success.  */
 int
 add_prefix_map (const char *new_prefix, const char *old_prefix,
 		struct prefix_maps *maps)
@@ -94,14 +93,13 @@ rewind_0:
   return 0;
 }
 
-
 /* Rewind a prefix map.
- *
- * Everything up to the given [old_head] is freed, and [maps]' fields are
- * replaced with [old_head] and [old_replace].
- */
+
+   Everything up to the given OLD_HEAD is freed, and the fields of MAPS are
+   replaced with OLD_HEAD and OLD_REPLACE.  */
 void
-rewind_prefix_maps (struct prefix_maps *maps, struct prefix_map *old_head, size_t old_replace)
+rewind_prefix_maps (struct prefix_maps *maps,
+		    struct prefix_map *old_head, size_t old_replace)
 {
   struct prefix_map *map;
   struct prefix_map *next;
@@ -118,11 +116,9 @@ rewind_prefix_maps (struct prefix_maps *maps, struct prefix_map *old_head, size_
   maps->max_replace = old_replace;
 }
 
-
 /* Clear all mappings.
- *
- * All child structs of [maps] are freed, but it itself is not freed.
- */
+
+   All child structs of MAPS are freed, but it itself is not freed.  */
 void
 clear_prefix_maps (struct prefix_maps *maps)
 {
@@ -130,7 +126,12 @@ clear_prefix_maps (struct prefix_maps *maps)
 }
 
 
-/* Private function, assumes new_name is wide enough to hold the remapped name. */
+/* Remap a filename.
+
+   Returns OLD_NAME unchanged if there was no remapping, otherwise NEW_NAME.
+
+   No allocations are performed; it assumes that NEW_NAME has enough space for
+   any potential remapped value.  */
 const char *
 remap_prefix_to (const char *old_name, char *new_name,
 		 struct prefix_map *map_head)
@@ -160,29 +161,34 @@ remap_prefix_to (const char *old_name, char *new_name,
 }
 
 
-#define remap_prefix_alloca(filename, maps) \
-  remap_prefix_to ((filename), \
-		   (char *) alloca (strlen ((filename)) + (maps)->max_replace + 1), \
+/* Remap a filename.
+
+   Returns OLD_NAME unchanged if there was no remapping, otherwise returns a
+   stack-allocated pointer to the newly-remapped filename.  */
+#define remap_prefix_alloca(old_name, maps) \
+  remap_prefix_to ((old_name), \
+		   (char *) alloca (strlen ((old_name)) + \
+				    (maps)->max_replace + 1), \
 		   (maps)->head)
 
 
 /* Remap a filename.
- *
- * This function does not consume nor take ownership of filename; the caller is
- * responsible for freeing it, if and only if it was already responsible for
- * freeing it before the call.
- *
- * It allocates new memory only in the case that a mapping was made. That is,
- * if and only if filename != return-value, then the caller is responsible for
- * freeing return-value.
-*/
-const char *
-remap_prefix_alloc (const char *filename, struct prefix_maps *maps, void *(*alloc)(size_t size))
-{
-  const char *name = remap_prefix_alloca (filename, maps);
 
-  if (name == filename)
-    return filename;
+   Returns OLD_NAME unchanged if there was no remapping, otherwise returns a
+   pointer to newly-allocated memory for the remapped filename.  The caller is
+   then responsible for freeing it.
+
+   That is, if and only if OLD_NAME != return-value, the caller is responsible
+   for freeing return-value.  The owner of filename remains unchanged.  */
+const char *
+remap_prefix_alloc (const char *old_name,
+		    struct prefix_maps *maps,
+		    void *(*alloc)(size_t size))
+{
+  const char *name = remap_prefix_alloca (old_name, maps);
+
+  if (name == old_name)
+    return old_name;
 
   size_t len = strlen (name) + 1;
   return (char *) memcpy (alloc (len), name, len);
@@ -191,9 +197,9 @@ remap_prefix_alloc (const char *filename, struct prefix_maps *maps, void *(*allo
 
 /* Like remap_prefix_alloc but with the system allocator. */
 const char *
-remap_prefix (const char *filename, struct prefix_maps *maps)
+remap_prefix (const char *old_name, struct prefix_maps *maps)
 {
-  return remap_prefix_alloc (filename, maps, malloc);
+  return remap_prefix_alloc (old_name, maps, malloc);
 }
 
 /** Main program */

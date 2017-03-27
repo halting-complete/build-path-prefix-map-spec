@@ -3,6 +3,9 @@
 /** Parsing the variable. */
 /* For Applying the variable, and Main program, see prefix_map.h. */
 
+/* Parse a single part of a single prefix-map pair.
+
+   Returns 0 on failure and 1 on success.  */
 int
 unquote (char *src)
 {
@@ -31,7 +34,9 @@ unquote (char *src)
   return 1;
 }
 
-/* Returns 0 on failure and 1 on success. */
+/* Parse a single prefix-map.
+
+   Returns 0 on failure and 1 on success.  */
 int
 parse_prefix_map (char *arg, struct prefix_maps *maps)
 {
@@ -49,7 +54,18 @@ parse_prefix_map (char *arg, struct prefix_maps *maps)
   return add_prefix_map (arg, p, maps);
 }
 
-/* Returns 0 on failure and 1 on success. */
+/* Parse prefix-maps according to the BUILD_PATH_PREFIX_MAP standard.
+
+   The input string value is of the form
+
+     dst[0]=src[0]:dst[1]=src[1]...
+
+   Every dst[i] and src[i] has had "%", "=" and ":" characters replaced with
+   "%#", "%+", and "%." respectively; this function reverses this replacement.
+
+   Rightmost entries are stored at the head of the parsed structure.
+
+   Returns 0 on failure and 1 on success.  */
 int
 parse_prefix_maps (const char *arg, struct prefix_maps *maps)
 {
