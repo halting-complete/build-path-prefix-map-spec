@@ -95,17 +95,18 @@ rewind_0:
 }
 
 
-/* Clear all mappings.
+/* Rewind a prefix map.
  *
- * All child structs of [maps] are freed, but it itself is not freed.
+ * Everything up to the given [old_head] is freed, and [maps]' fields are
+ * replaced with [old_head] and [old_replace].
  */
 void
-clear_prefix_maps (struct prefix_maps *maps)
+rewind_prefix_maps (struct prefix_maps *maps, struct prefix_map *old_head, size_t old_replace)
 {
   struct prefix_map *map;
   struct prefix_map *next;
 
-  for (map = maps->head; map; map = next)
+  for (map = maps->head; map != old_head; map = next)
     {
       free ((void *) map->old_prefix);
       free ((void *) map->new_prefix);
@@ -113,7 +114,19 @@ clear_prefix_maps (struct prefix_maps *maps)
       free (map);
     }
 
-  maps->max_replace = 0;
+  maps->head = old_head;
+  maps->max_replace = old_replace;
+}
+
+
+/* Clear all mappings.
+ *
+ * All child structs of [maps] are freed, but it itself is not freed.
+ */
+void
+clear_prefix_maps (struct prefix_maps *maps)
+{
+  rewind_prefix_maps (maps, NULL, 0);
 }
 
 

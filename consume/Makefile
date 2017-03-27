@@ -30,7 +30,7 @@ $(foreach format,$(ALL_FORMATS),$(eval $(call find_testcases,$(format).1,env)))
 all: $(ALL_SOURCE:%=%.out)
 
 %.c.out: %.c prefix_map.h
-	$(CC) -std=c11 -Werror -o "$@" "$<"
+	$(CC) -std=c11 -Werror -g -o "$@" "$<"
 
 %.rs.out: %.rs %.c.out
 	# TODO: hack to avoid failing on Debian jessie, which is running on jenkins
@@ -38,7 +38,7 @@ all: $(ALL_SOURCE:%=%.out)
 	if [ -f /etc/debian_version -a "$$(echo "$$(cat /etc/debian_version) < 9.0" | bc)" -eq 1 ]; then \
 		cp "$*.c.out" "$@"; \
 	else \
-		$(RUSTC) -W warnings -o "$@" "$<"; \
+		$(RUSTC) -W warnings -g -o "$@" "$<"; \
 	fi
 
 .PHONY: check testcases-rst

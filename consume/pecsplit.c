@@ -53,6 +53,9 @@ parse_prefix_map (char *arg, struct prefix_maps *maps)
 int
 parse_prefix_maps (const char *arg, struct prefix_maps *maps)
 {
+  struct prefix_map *old_head = maps->head;
+  size_t old_replace = maps->max_replace;
+
   size_t len = strlen (arg);
   char *copy = (char *) alloca (len + 1);
   memcpy (copy, arg, len + 1); // strtok modifies the string so we have to copy it
@@ -63,7 +66,8 @@ parse_prefix_maps (const char *arg, struct prefix_maps *maps)
     {
       if (!parse_prefix_map (tok, maps))
 	{
-	  fprintf (stderr, "invalid value for prefix-map: '%s'\n", arg);
+	  fprintf (stderr, "invalid value for prefix-map: '%s'; rewinding to: { %p; %d }\n", arg, old_head, old_replace);
+	  rewind_prefix_maps (maps, old_head, old_replace);
 	  return 0;
 	}
 
