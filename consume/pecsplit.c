@@ -7,7 +7,7 @@
 
    Returns 0 on failure and 1 on success.  */
 int
-unquote (char *src)
+prefix_map_parse_unquote (char *src)
 {
   for (char *dest = src; 0 != (*dest = *src); ++dest, ++src)
     switch (*src)
@@ -38,23 +38,23 @@ unquote (char *src)
 
    Returns 0 on failure and 1 on success.  */
 int
-parse_prefix_map (char *arg, struct prefix_maps *maps)
+prefix_map_parse1 (struct prefix_map **map_head, char *arg)
 {
   char *p;
   p = strchr (arg, '=');
   if (!p)
     return 0;
   *p = '\0';
-  if (!unquote (arg))
+  if (!prefix_map_parse_unquote (arg))
     return 0;
   p++;
-  if (!unquote (p))
+  if (!prefix_map_parse_unquote (p))
     return 0;
 
-  return add_prefix_map (arg, p, maps);
+  return prefix_map_push (map_head, arg, p);
 }
 
-/* Parse prefix-maps according to the BUILD_PATH_PREFIX_MAP standard.
+/* Parse a prefix-map according to the BUILD_PATH_PREFIX_MAP standard.
 
    The input string value is of the form
 
@@ -67,10 +67,9 @@ parse_prefix_map (char *arg, struct prefix_maps *maps)
 
    Returns 0 on failure and 1 on success.  */
 int
-parse_prefix_maps (const char *arg, struct prefix_maps *maps)
+prefix_map_parse (struct prefix_map **map_head, const char *arg)
 {
-  struct prefix_map *old_head = maps->head;
-  size_t old_replace = maps->max_replace;
+  struct prefix_map *old_head = *map_head;
 
   size_t len = strlen (arg);
   char *copy = (char *) alloca (len + 1);
@@ -80,10 +79,10 @@ parse_prefix_maps (const char *arg, struct prefix_maps *maps)
   char *end, *tok = strtok_r (copy, sep, &end);
   while (tok != NULL)
     {
-      if (!parse_prefix_map (tok, maps))
+      if (!prefix_map_parse1 (map_head, tok))
 	{
-	  fprintf (stderr, "invalid value for prefix-map: '%s'; rewinding to: { %p; %d }\n", arg, old_head, old_replace);
-	  rewind_prefix_maps (maps, old_head, old_replace);
+	  fprintf (stderr, "invalid value for prefix-map: '%s'; rewinding to: %p\n", arg, old_head);
+	  prefix_map_pop_until (map_head, old_head);
 	  return 0;
 	}
 
@@ -96,5 +95,5 @@ parse_prefix_maps (const char *arg, struct prefix_maps *maps)
 int
 main (int argc, char *argv[])
 {
-  return generic_main (parse_prefix_maps, argc, argv);
+  return generic_main (prefix_map_parse, argc, argv);
 }
