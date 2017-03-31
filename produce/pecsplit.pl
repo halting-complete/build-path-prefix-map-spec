@@ -1,6 +1,7 @@
 #!/usr/bin/perl
 
 use strict;
+use warnings;
 
 # Setting the variable
 
@@ -12,9 +13,14 @@ sub pfmap_enquote {
 	return $part;
 	}
 
-$ENV{"BUILD_PATH_PREFIX_MAP"} = sprintf("%s:%s=%s",
-	$ENV{"BUILD_PATH_PREFIX_MAP"},
-	pfmap_enquote($ENV{"NEWDST"}),
-	pfmap_enquote($ENV{"NEWSRC"}));
+sub pfmap_append($$) {
+	my $dst = shift;
+	my $src = shift;
+	my $curmap = $ENV{"BUILD_PATH_PREFIX_MAP"};
+	$ENV{"BUILD_PATH_PREFIX_MAP"} = ($curmap ? $curmap . ":" : "") .
+		pfmap_enquote($dst) . "=" . pfmap_enquote($src);
+}
+
+pfmap_append($ENV{"NEWDST"}, $ENV{"NEWSRC"});
 
 exec @ARGV;
